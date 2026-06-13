@@ -15,6 +15,7 @@ A Claude Code skill that converts messy plain-text citations (APA, MLA, or incom
 
 ```
 reference-resolver-agent/
+├── pyproject.toml            # Python package metadata (pip install)
 ├── SKILL.md                  # Claude Code skill definition
 ├── agents/
 │   └── openai.yaml           # Agent interface configuration
@@ -28,23 +29,33 @@ reference-resolver-agent/
 
 ## Quick Start
 
+### Install (recommended)
+
+```bash
+pip install .
+```
+
+Then run from anywhere:
+
+```bash
+reference-resolver input.txt --format ris --output references.ris
+reference-resolver input.txt --format enw --output references.enw
+reference-resolver input.txt --format bib --output references.bib
+
+# Offline mode — parse only, skip API lookups
+reference-resolver input.txt --format ris --output references.ris --no-network
+```
+
 ### In Claude Code (skill mode)
 
 Just describe your references or paste a reference list and ask Claude to convert them to EndNote format. The skill handles parsing, API lookups, and export automatically.
 
-### Batch script
+### Run without installing
 
 ```bash
-# Output RIS (default, works with EndNote & Reference Manager)
 python scripts/reference_resolver.py input.txt --format ris --output references.ris
-
-# Output EndNote tagged format
 python scripts/reference_resolver.py input.txt --format enw --output references.enw
-
-# Output BibTeX
 python scripts/reference_resolver.py input.txt --format bib --output references.bib
-
-# Offline mode — parse only, skip API lookups
 python scripts/reference_resolver.py input.txt --format ris --output references.ris --no-network
 ```
 
@@ -68,7 +79,7 @@ LeCun, Y., Bengio, Y., & Hinton, G. (2015). Deep learning. Nature, 521(7553),
 ## Matching Confidence
 
 | Score | Status | Behaviour |
-|-------|--------|-----------|
+|-------|--------|----------|
 | ≥ 0.90 or exact DOI | `resolved` | Accepted automatically |
 | 0.75 – 0.89 | `needs_review` | Kept but flagged |
 | < 0.75 | `needs_review` | Not replaced; original fields preserved |
