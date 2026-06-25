@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>每日新聞播報</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- ── Header ── -->
+    <header class="header">
+      <div class="header-inner">
+        <div class="brand">
+          <span class="brand-icon">📡</span>
+          <div class="brand-text">
+            <span class="brand-name">每日新聞播報</span>
+            <span class="brand-sub">Daily News Podcast</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn" id="refreshBtn" title="重新擷取今日新聞">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+          </button>
+          <button class="icon-btn" id="settingsBtn" title="研究主題設定">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Date / Status bar ── -->
+    <div class="status-bar">
+      <span class="date-label" id="dateLabel">載入中…</span>
+      <span class="status-pill" id="statusPill">
+        <span class="dot"></span><span id="statusText">連線中</span>
+      </span>
+    </div>
+
+    <!-- ── Podcast player (sticky) ── -->
+    <div class="player-wrapper" id="playerWrapper">
+      <div class="player">
+        <div class="player-meta">
+          <span class="player-title">今日播報</span>
+          <span class="player-progress-text" id="playerProgressText">00:00 / 00:00</span>
+        </div>
+        <div class="player-controls">
+          <button class="play-btn" id="playBtn" title="播放 / 暫停">
+            <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            <svg id="pauseIcon" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          </button>
+          <div class="progress-track" id="progressTrack">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="player-right">
+            <button class="speed-btn active" data-speed="1">1×</button>
+            <button class="speed-btn" data-speed="1.25">1.25×</button>
+            <button class="speed-btn" data-speed="1.5">1.5×</button>
+            <button class="speed-btn" data-speed="2">2×</button>
+            <button class="icon-btn small" id="stopBtn" title="停止">
+              <svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab navigation ── -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="international">🌍 國際</button>
+      <button class="tab-btn" data-tab="health">🏥 醫療健康</button>
+      <button class="tab-btn" data-tab="technology">💻 科技</button>
+      <button class="tab-btn" data-tab="ai">🤖 AI</button>
+      <button class="tab-btn" data-tab="taiwan">🇹🇼 台灣</button>
+      <button class="tab-btn" data-tab="academic">📚 學術焦點</button>
+      <button class="tab-btn" data-tab="script">📝 播報稿</button>
+    </nav>
+
+    <!-- ── Main content ── -->
+    <main class="main-content">
+      <div class="tab-panel active" id="tab-international">
+        <div class="articles-grid" id="grid-international"></div>
+      </div>
+      <div class="tab-panel" id="tab-health">
+        <div class="articles-grid" id="grid-health"></div>
+      </div>
+      <div class="tab-panel" id="tab-technology">
+        <div class="articles-grid" id="grid-technology"></div>
+      </div>
+      <div class="tab-panel" id="tab-ai">
+        <div class="articles-grid" id="grid-ai"></div>
+      </div>
+      <div class="tab-panel" id="tab-taiwan">
+        <div class="articles-grid" id="grid-taiwan"></div>
+      </div>
+      <div class="tab-panel" id="tab-academic">
+        <div class="papers-list" id="list-academic"></div>
+      </div>
+      <div class="tab-panel" id="tab-script">
+        <div class="script-panel">
+          <pre id="scriptContent" class="script-text">播報稿載入中…</pre>
+        </div>
+      </div>
+    </main>
+
+    <!-- ── Loading overlay ── -->
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <p>正在擷取最新新聞與學術文章，請稍候…</p>
+    </div>
+
+    <!-- ── Settings modal ── -->
+    <div class="modal-backdrop" id="settingsBackdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>研究主題設定</h2>
+          <button class="icon-btn" id="closeSettings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">輸入您的研究主題，每行一個關鍵字（英文）。系統將依此從 PubMed 擷取相關學術文章。</p>
+          <textarea id="topicsInput" class="topics-textarea" rows="8" placeholder="artificial intelligence medicine&#10;machine learning clinical&#10;large language model healthcare&#10;natural language processing biomedical"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="cancelSettings">取消</button>
+          <button class="btn-primary" id="saveSettings">儲存並套用</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /#app -->
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

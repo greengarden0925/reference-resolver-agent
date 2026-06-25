@@ -1,0 +1,27 @@
+services:
+  podcast-app:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./frontend:/frontend
+      - podcast_data:/app/data
+    environment:
+      - DATABASE_PATH=/app/data/podcast.db
+      - TIMEZONE=Asia/Taipei
+      - DAILY_HOUR=9
+      - DAILY_MINUTE=0
+      - MAX_NEWS_PER_CATEGORY=5
+      - MAX_ACADEMIC_PAPERS=8
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/settings"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  podcast_data:
