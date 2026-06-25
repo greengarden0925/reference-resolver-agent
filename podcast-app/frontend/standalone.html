@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>📡 每日新聞播報</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0d14;--surf:#131520;--surf2:#1a1d2e;--bdr:rgba(255,255,255,.07);
+  --txt:#e8eaf0;--muted:#6b7280;--acc:#4f9eff;--acc2:#7c5cfc;
+  --ok:#34d399;--warn:#fbbf24;--err:#f87171;--r:12px;--r2:8px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
+
+/* Header */
+.hdr{position:sticky;top:0;z-index:100;background:rgba(11,13,20,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--bdr)}
+.hdr-inner{display:flex;align-items:center;justify-content:space-between;max-width:1100px;margin:0 auto;padding:0 16px;height:60px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-icon{font-size:26px}
+.brand-name{font-size:15px;font-weight:700;background:linear-gradient(135deg,#4f9eff,#7c5cfc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.brand-sub{font-size:11px;color:var(--muted);letter-spacing:.04em}
+.hdr-actions{display:flex;gap:8px}
+
+/* Status */
+.sbar{display:flex;align-items:center;justify-content:space-between;max-width:1100px;margin:0 auto;padding:0 16px;height:36px;font-size:12px;background:var(--surf);border-bottom:1px solid var(--bdr)}
+.date-lbl{color:var(--muted);font-weight:500}
+.spill{display:flex;align-items:center;gap:6px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);padding:3px 10px;border-radius:999px;color:var(--ok);font-size:11px;font-weight:500;transition:all .2s}
+.spill.loading{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.3);color:var(--warn)}
+.spill.error{background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.3);color:var(--err)}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Player */
+.player-wrap{position:sticky;top:60px;z-index:90;background:rgba(19,21,32,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--bdr)}
+.player{max-width:1100px;margin:0 auto;padding:10px 16px;display:flex;flex-direction:column;gap:6px}
+.player-meta{display:flex;justify-content:space-between;align-items:center}
+.player-title{font-size:12px;font-weight:600;color:var(--acc)}
+.player-time{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.player-ctl{display:flex;align-items:center;gap:10px}
+.play-btn{flex-shrink:0;width:38px;height:38px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s}
+.play-btn:hover{transform:scale(1.08);box-shadow:0 0 16px rgba(79,158,255,.5)}
+.play-btn svg{width:15px;height:15px}
+.prog-track{flex:1;height:5px;background:var(--surf2);border-radius:999px;cursor:pointer;overflow:hidden}
+.prog-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:999px;transition:width .4s linear}
+.player-r{display:flex;gap:4px;flex-shrink:0;align-items:center}
+.spd-btn{background:var(--surf2);border:1px solid var(--bdr);color:var(--muted);border-radius:var(--r2);padding:3px 7px;font-size:11px;cursor:pointer;transition:all .15s;font-family:inherit}
+.spd-btn.active,.spd-btn:hover{background:var(--acc);border-color:var(--acc);color:#fff}
+
+/* Icon btn */
+.ibtn{background:var(--surf2);border:1px solid var(--bdr);color:var(--muted);border-radius:var(--r2);padding:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.ibtn:hover{background:var(--surf);color:var(--txt);border-color:var(--acc)}
+.ibtn svg{width:18px;height:18px}
+.ibtn.sm{padding:5px}.ibtn.sm svg{width:14px;height:14px}
+
+/* Tabs */
+.tabs{display:flex;gap:2px;padding:8px 16px 0;max-width:1100px;margin:0 auto;width:100%;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .15s;font-family:inherit}
+.tab:hover{color:var(--txt)}
+.tab.active{color:var(--acc);border-bottom-color:var(--acc)}
+
+/* Content */
+.content{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+.panel{display:none}.panel.active{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+
+/* Article card */
+.card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:16px;cursor:pointer;transition:border-color .2s,transform .15s}
+.card:hover{border-color:rgba(79,158,255,.35);transform:translateY(-2px)}
+.card-src{font-size:11px;font-weight:700;color:var(--acc);letter-spacing:.04em;text-transform:uppercase;margin-bottom:7px}
+.card-title{font-size:13.5px;font-weight:600;line-height:1.5;margin-bottom:8px}
+.card-sum{font-size:12.5px;color:var(--muted);line-height:1.65;margin-bottom:10px}
+.card-foot{display:flex;justify-content:space-between;align-items:center}
+.card-date{font-size:11px;color:var(--muted)}
+.card-link{font-size:11px;color:var(--acc);text-decoration:none;font-weight:500}
+.card-link:hover{text-decoration:underline}
+
+/* Paper card */
+.paper{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:18px;transition:border-color .2s}
+.paper:hover{border-color:rgba(124,92,252,.4)}
+.paper-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--acc2);background:rgba(124,92,252,.1);border:1px solid rgba(124,92,252,.25);border-radius:999px;padding:3px 10px;margin-bottom:10px}
+.paper-title{font-size:14px;font-weight:600;line-height:1.5;margin-bottom:6px}
+.paper-authors{font-size:12px;color:var(--acc);margin-bottom:8px;font-style:italic}
+.paper-abstract{font-size:12.5px;color:var(--muted);line-height:1.7;margin-bottom:10px}
+.paper-foot{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.paper-date{font-size:11px;color:var(--muted)}
+.paper-link{font-size:12px;color:var(--acc2);text-decoration:none;font-weight:500}
+.paper-link:hover{text-decoration:underline}
+.score-tag{font-size:10px;background:rgba(52,211,153,.12);color:var(--ok);border:1px solid rgba(52,211,153,.2);border-radius:999px;padding:2px 8px}
+
+/* Script */
+.script-box{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:24px}
+.script-txt{font-size:14px;line-height:2.1;white-space:pre-wrap;word-break:break-word}
+.script-line{transition:background .2s;border-radius:4px;padding:0 4px}
+.script-line.active{background:rgba(79,158,255,.15);color:var(--txt)}
+
+/* Empty */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--muted);gap:12px;text-align:center}
+.empty-icon{font-size:48px}
+.empty-h{font-size:16px;font-weight:600;color:var(--txt)}
+
+/* Loading */
+.overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(11,13,20,.85);backdrop-filter:blur(6px);flex-direction:column;align-items:center;justify-content:center;gap:20px;color:var(--muted);font-size:14px}
+.overlay.show{display:flex}
+.spinner{width:42px;height:42px;border:3px solid var(--surf2);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.overlay-msg{text-align:center;line-height:1.8}
+
+/* Modal */
+.backdrop{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px}
+.backdrop.open{display:flex}
+.modal{background:var(--surf);border:1px solid var(--bdr);border-radius:16px;width:100%;max-width:480px;overflow:hidden}
+.modal-h{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--bdr)}
+.modal-h h2{font-size:16px;font-weight:700}
+.modal-b{padding:20px 24px}
+.modal-desc{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6}
+.topics-ta{width:100%;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r2);color:var(--txt);font-family:monospace;font-size:13px;padding:12px;resize:vertical;outline:none;transition:border-color .15s}
+.topics-ta:focus{border-color:var(--acc)}
+.modal-f{display:flex;gap:10px;justify-content:flex-end;padding:16px 24px 20px;border-top:1px solid var(--bdr)}
+.btn-p{background:var(--acc);color:#fff;border:none;border-radius:var(--r2);padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.btn-p:hover{opacity:.88}
+.btn-s{background:var(--surf2);color:var(--muted);border:1px solid var(--bdr);border-radius:var(--r2);padding:9px 20px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-s:hover{color:var(--txt);border-color:var(--acc)}
+
+/* Progress indicator inside loading */
+.fetch-progress{font-size:12px;color:rgba(255,255,255,.5);text-align:center;margin-top:4px}
+
+@media(max-width:600px){
+  .grid{grid-template-columns:1fr}
+  .spd-btn:not(.active){display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="hdr">
+  <div class="hdr-inner">
+    <div class="brand">
+      <span class="brand-icon">📡</span>
+      <div>
+        <div class="brand-name">每日新聞播報</div>
+        <div class="brand-sub">Daily News Podcast</div>
+      </div>
+    </div>
+    <div class="hdr-actions">
+      <button class="ibtn" id="refreshBtn" title="重新擷取">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+      <button class="ibtn" id="settingsBtn" title="研究主題設定">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Status bar -->
+<div class="sbar">
+  <span class="date-lbl" id="dateLbl">—</span>
+  <span class="spill" id="spill"><span class="dot"></span><span id="spillTxt">初始化中</span></span>
+</div>
+
+<!-- Podcast player -->
+<div class="player-wrap">
+  <div class="player">
+    <div class="player-meta">
+      <span class="player-title">🎙 今日播報</span>
+      <span class="player-time" id="playerTime">—</span>
+    </div>
+    <div class="player-ctl">
+      <button class="play-btn" id="playBtn">
+        <svg id="icPlay" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+        <svg id="icPause" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </button>
+      <div class="prog-track" id="progTrack">
+        <div class="prog-fill" id="progFill"></div>
+      </div>
+      <div class="player-r">
+        <button class="spd-btn active" data-s="1">1×</button>
+        <button class="spd-btn" data-s="1.25">1.25×</button>
+        <button class="spd-btn" data-s="1.5">1.5×</button>
+        <button class="spd-btn" data-s="2">2×</button>
+        <button class="ibtn sm" id="stopBtn" title="停止">
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<nav class="tabs">
+  <button class="tab active" data-t="intl">🌍 國際</button>
+  <button class="tab" data-t="health">🏥 醫療健康</button>
+  <button class="tab" data-t="tech">💻 科技</button>
+  <button class="tab" data-t="ai">🤖 AI</button>
+  <button class="tab" data-t="taiwan">🇹🇼 台灣</button>
+  <button class="tab" data-t="academic">📚 學術焦點</button>
+  <button class="tab" data-t="script">📝 播報稿</button>
+</nav>
+
+<!-- Content panels -->
+<main class="content">
+  <div class="panel active" id="p-intl"><div class="grid" id="g-intl"></div></div>
+  <div class="panel" id="p-health"><div class="grid" id="g-health"></div></div>
+  <div class="panel" id="p-tech"><div class="grid" id="g-tech"></div></div>
+  <div class="panel" id="p-ai"><div class="grid" id="g-ai"></div></div>
+  <div class="panel" id="p-taiwan"><div class="grid" id="g-taiwan"></div></div>
+  <div class="panel" id="p-academic"><div id="g-academic" style="display:flex;flex-direction:column;gap:14px"></div></div>
+  <div class="panel" id="p-script"><div class="script-box"><div class="script-txt" id="scriptEl"></div></div></div>
+</main>
+
+<!-- Loading overlay -->
+<div class="overlay" id="overlay">
+  <div class="spinner"></div>
+  <div class="overlay-msg" id="overlayMsg">正在擷取今日新聞…<br><span id="fetchProgress" class="fetch-progress"></span></div>
+</div>
+
+<!-- Settings modal -->
+<div class="backdrop" id="settBackdrop">
+  <div class="modal">
+    <div class="modal-h">
+      <h2>⚗️ 研究主題設定</h2>
+      <button class="ibtn" id="closeSettings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-b">
+      <p class="modal-desc">輸入您的研究主題關鍵字（英文），每行一個。系統將從 PubMed 自動搜尋近兩週相關學術文章，並整合至播報稿中。</p>
+      <textarea class="topics-ta" id="topicsTA" rows="8" placeholder="artificial intelligence medicine&#10;machine learning clinical&#10;large language model healthcare&#10;natural language processing biomedical&#10;clinical decision support"></textarea>
+    </div>
+    <div class="modal-f">
+      <button class="btn-s" id="cancelSettings">取消</button>
+      <button class="btn-p" id="saveSettings">儲存並重新擷取</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── Config ──────────────────────────────────────────────────────────────────
+const RSS_PROXY   = 'https://api.rss2json.com/v1/api.json?rss_url=';
+const PUBMED_BASE = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils';
+const LS_DATA     = 'dnp_data';
+const LS_TOPICS   = 'dnp_topics';
+
+const FEEDS = {
+  intl: [
+    { name: 'The Guardian', url: 'https://www.theguardian.com/world/rss' },
+    { name: 'NPR News',     url: 'https://feeds.npr.org/1001/rss.xml' },
+    { name: 'Al Jazeera',  url: 'https://www.aljazeera.com/xml/rss/all.xml' },
+  ],
+  health: [
+    { name: 'Medical Xpress',   url: 'https://medicalxpress.com/rss-feed/' },
+    { name: 'Science Daily',    url: 'https://www.sciencedaily.com/rss/health.xml' },
+    { name: 'HealthDay',        url: 'https://consumer.healthday.com/rss/topnews.xml' },
+    { name: 'NIH News',         url: 'https://www.nih.gov/rss/news.xml' },
+  ],
+  tech: [
+    { name: 'MIT Tech Review', url: 'https://www.technologyreview.com/feed/' },
+    { name: 'TechCrunch',      url: 'https://techcrunch.com/feed/' },
+    { name: 'The Verge',       url: 'https://www.theverge.com/rss/index.xml' },
+  ],
+  ai: [
+    { name: 'VentureBeat AI', url: 'https://venturebeat.com/category/ai/feed/' },
+    { name: 'MIT AI News',    url: 'https://news.mit.edu/topic/artificial-intelligence2/rss.xml' },
+    { name: 'SD – AI',        url: 'https://www.sciencedaily.com/rss/computers_math/artificial_intelligence.xml' },
+  ],
+  taiwan: [
+    { name: 'CNA 中央社',    url: 'https://www.cna.com.tw/rss/aall.aspx' },
+    { name: 'Taipei Times',  url: 'https://www.taipeitimes.com/xml/national.rss' },
+    { name: 'Focus Taiwan',  url: 'https://focustaiwan.tw/politics/rss' },
+  ],
+};
+
+const ACADEMIC_FEEDS = [
+  { name: 'Nature',                    url: 'https://www.nature.com/nature.rss' },
+  { name: 'Nature Medicine',           url: 'https://www.nature.com/nm.rss' },
+  { name: 'Nature Biomedical Eng.',    url: 'https://www.nature.com/natbiomedeng.rss' },
+  { name: 'NEJM',                      url: 'https://www.nejm.org/action/showFeed?jc=nejm&type=etoc&feed=rss' },
+  { name: 'The Lancet',               url: 'https://www.thelancet.com/rssfeed/lancet_current.xml' },
+];
+
+const DEFAULT_TOPICS = [
+  'artificial intelligence medicine',
+  'machine learning clinical',
+  'large language model healthcare',
+  'natural language processing biomedical',
+  'clinical decision support',
+];
+
+// ── State ───────────────────────────────────────────────────────────────────
+let synth     = window.speechSynthesis;
+let utterance = null;
+let playing   = false;
+let speed     = 1;
+let charIdx   = 0;
+let totalChars = 0;
+let progTimer  = null;
+let scriptLines = [];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const $  = id => document.getElementById(id);
+const $$ = s  => document.querySelectorAll(s);
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function stripHtml(html) {
+  const t = document.createElement('div');
+  t.innerHTML = html || '';
+  return t.textContent.replace(/\s+/g,' ').trim();
+}
+
+function trunc(s, n=300) {
+  s = (s||'').trim();
+  return s.length > n ? s.slice(0,n).replace(/\s\S*$/,'') + '…' : s;
+}
+
+function fmtDate(raw) {
+  if (!raw) return '';
+  try {
+    const d = new Date(raw);
+    if (isNaN(d)) return raw;
+    return d.toLocaleDateString('zh-TW',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  } catch { return raw; }
+}
+
+function todayStr() {
+  return new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'long',timeZone:'Asia/Taipei'});
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0,10);
+}
+
+function getTopics() {
+  try { return JSON.parse(localStorage.getItem(LS_TOPICS)) || DEFAULT_TOPICS; }
+  catch { return DEFAULT_TOPICS; }
+}
+
+// ── Status ───────────────────────────────────────────────────────────────────
+function setStatus(type, txt) {
+  $('spill').className = 'spill ' + (type === 'ok' ? '' : type);
+  $('spillTxt').textContent = txt;
+}
+
+// ── RSS fetch ─────────────────────────────────────────────────────────────────
+async function fetchFeed(url, name, count=4) {
+  try {
+    const res  = await fetch(RSS_PROXY + encodeURIComponent(url) + '&count=' + count, {signal: AbortSignal.timeout(10000)});
+    const data = await res.json();
+    if (data.status !== 'ok') return [];
+    return data.items.map(it => ({
+      source: name,
+      title:  (it.title || '').trim(),
+      summary: trunc(stripHtml(it.description || it.content || '')),
+      url:    it.link || '',
+      published_at: it.pubDate || '',
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function fetchCategory(key) {
+  const feeds   = FEEDS[key] || [];
+  const results = [];
+  for (const f of feeds) {
+    const items = await fetchFeed(f.url, f.name, 3);
+    results.push(...items);
+    if (results.length >= 5) break;
+  }
+  return results.slice(0,5);
+}
+
+// ── PubMed ───────────────────────────────────────────────────────────────────
+async function fetchPubMed(topics) {
+  const papers = [];
+  for (const topic of topics.slice(0,3)) {
+    try {
+      const q = `"${topic}"[Title/Abstract] AND "last 14 days"[PDat]`;
+      const sRes  = await fetch(`${PUBMED_BASE}/esearch.fcgi?db=pubmed&term=${encodeURIComponent(q)}&retmax=4&sort=relevance&retmode=json`, {signal:AbortSignal.timeout(8000)});
+      const sData = await sRes.json();
+      const ids   = sData.esearchresult?.idlist || [];
+      if (!ids.length) continue;
+
+      const uRes  = await fetch(`${PUBMED_BASE}/esummary.fcgi?db=pubmed&id=${ids.join(',')}&retmode=json`, {signal:AbortSignal.timeout(8000)});
+      const uData = await uRes.json();
+      const res   = uData.result || {};
+
+      for (const id of ids) {
+        const it = res[id];
+        if (!it || it.error) continue;
+        const authList = (it.authors||[]).slice(0,3).map(a=>a.name);
+        if ((it.authors||[]).length > 3) authList.push('et al.');
+        papers.push({
+          source:    'PubMed',
+          title:     it.title || '',
+          authors:   authList.join(', '),
+          abstract:  '',
+          url:       `https://pubmed.ncbi.nlm.nih.gov/${id}/`,
+          journal:   it.fulljournalname || it.source || '',
+          published_at: it.pubdate || '',
+          relevance_score: 0.90,
+        });
+      }
+      if (papers.length >= 8) break;
+    } catch {}
+  }
+  return papers.slice(0,8);
+}
+
+// ── Academic RSS ──────────────────────────────────────────────────────────────
+async function fetchAcademicFeeds() {
+  const papers = [];
+  for (const f of ACADEMIC_FEEDS) {
+    const items = await fetchFeed(f.url, f.name, 3);
+    items.forEach(it => {
+      papers.push({
+        source: it.source,
+        title:  it.title,
+        authors: '',
+        abstract: it.summary,
+        url:    it.url,
+        journal: it.source,
+        published_at: it.published_at,
+        relevance_score: 0.80,
+      });
+    });
+    if (papers.length >= 10) break;
+  }
+  return papers;
+}
+
+// ── Main fetch ────────────────────────────────────────────────────────────────
+async function fetchAll(force = false) {
+  // Check cache
+  if (!force) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(LS_DATA));
+      if (cached && cached.date === todayKey()) {
+        render(cached);
+        setStatus('ok', '資料已載入（今日快取）');
+        return;
+      }
+    } catch {}
+  }
+
+  $('overlay').classList.add('show');
+  setStatus('loading', '擷取中…');
+
+  const news = {};
+  const categories = ['intl','health','tech','ai','taiwan'];
+  const catLabels  = {intl:'國際',health:'醫療健康',tech:'科技',ai:'AI',taiwan:'台灣'};
+
+  for (const cat of categories) {
+    $('fetchProgress').textContent = `正在擷取 ${catLabels[cat]} 新聞…`;
+    news[cat] = await fetchCategory(cat);
+  }
+
+  $('fetchProgress').textContent = '正在擷取 Nature / NEJM 文章…';
+  const acadFeeds = await fetchAcademicFeeds();
+
+  $('fetchProgress').textContent = '正在搜尋 PubMed 研究文章…';
+  const topics  = getTopics();
+  const pubmed  = await fetchPubMed(topics);
+
+  const papers = [...acadFeeds, ...pubmed]
+    .sort((a,b) => b.relevance_score - a.relevance_score)
+    .slice(0, 10);
+
+  const script = buildScript(news, papers);
+  const data   = { date: todayKey(), news, papers, script };
+
+  try { localStorage.setItem(LS_DATA, JSON.stringify(data)); } catch {}
+
+  render(data);
+  $('overlay').classList.remove('show');
+  setStatus('ok', '新聞已更新');
+}
+
+// ── Script builder ────────────────────────────────────────────────────────────
+const ORD = ['一','二','三','四','五','六','七','八'];
+function ord(n) { return ORD[n-1] || n; }
+
+const CAT_LABEL = {intl:'國際要聞',health:'醫療健康',tech:'科技新聞',ai:'人工智慧',taiwan:'台灣要聞'};
+
+function buildScript(news, papers) {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'long',timeZone:'Asia/Taipei'});
+  const lines = [];
+
+  lines.push(`早安！歡迎收聽每日新聞播報。`);
+  lines.push(`今天是 ${dateStr}。`);
+  lines.push(`以下為今日精選重要新聞，讓我們一起來看看今天的世界。`);
+  lines.push('');
+
+  for (const [cat, label] of Object.entries(CAT_LABEL)) {
+    const arts = (news[cat] || []).slice(0,4);
+    if (!arts.length) continue;
+    lines.push(`【${label}】`);
+    arts.forEach((a,i) => {
+      lines.push(`第${ord(i+1)}則，來自 ${a.source}：${a.title}`);
+      if (a.summary) lines.push(`  ${a.summary}`);
+    });
+    lines.push('');
+  }
+
+  if (papers.length) {
+    lines.push('【學術焦點 — Nature、NEJM 與 PubMed 精選】');
+    lines.push('以下為本週與您研究領域相關的最新學術文章：');
+    lines.push('');
+    papers.slice(0,6).forEach((p,i) => {
+      lines.push(`第${ord(i+1)}篇：《${p.title}》`);
+      if (p.source) lines.push(`  來源：${p.source}`);
+      if (p.authors) lines.push(`  作者：${p.authors}`);
+      if (p.abstract) lines.push(`  摘要：${p.abstract.slice(0,200)}…`);
+    });
+    lines.push('');
+  }
+
+  lines.push('以上是今日的每日新聞播報。');
+  lines.push('感謝您的收聽，祝您有個充實愉快的一天，再見！');
+
+  return lines.join('\n');
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(data) {
+  const { news = {}, papers = [], script = '' } = data;
+
+  // News grids
+  const catKeys = ['intl','health','tech','ai','taiwan'];
+  const catMeta = {intl:['🌍','國際要聞'],health:['🏥','醫療健康'],tech:['💻','科技新聞'],ai:['🤖','AI新聞'],taiwan:['🇹🇼','台灣要聞']};
+  for (const key of catKeys) {
+    const el  = $(`g-${key}`);
+    const arts = news[key] || [];
+    el.innerHTML = arts.length
+      ? arts.map(a => cardHTML(a)).join('')
+      : emptyHTML(catMeta[key][0], `暫無${catMeta[key][1]}`, '今日未能擷取相關來源');
+  }
+
+  // Academic
+  const acadEl = $('g-academic');
+  acadEl.innerHTML = papers.length
+    ? papers.map(p => paperHTML(p)).join('')
+    : emptyHTML('📚','暫無學術文章','請檢查研究主題設定或稍後再試');
+
+  // Script
+  const fullScript = script || buildScript(news, papers);
+  scriptLines = fullScript.split('\n');
+  $('scriptEl').innerHTML = scriptLines.map((l,i) =>
+    `<span class="script-line" id="sl-${i}">${esc(l) || '&nbsp;'}</span>`
+  ).join('\n');
+
+  totalChars = fullScript.length;
+  charIdx    = 0;
+  utterance  = null;
+}
+
+function cardHTML(a) {
+  return `<article class="card" onclick="openUrl('${esc(a.url)}')">
+    <div class="card-src">${esc(a.source)}</div>
+    <h3 class="card-title">${esc(a.title || '(無標題)')}</h3>
+    ${a.summary ? `<p class="card-sum">${esc(a.summary)}</p>` : ''}
+    <div class="card-foot">
+      <span class="card-date">${fmtDate(a.published_at)}</span>
+      ${a.url ? `<a class="card-link" href="${esc(a.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">閱讀全文 →</a>` : ''}
+    </div>
+  </article>`;
+}
+
+function paperHTML(p) {
+  const score = Math.round((p.relevance_score||0)*100);
+  return `<article class="paper">
+    <div class="paper-badge">📖 ${esc(p.source)}</div>
+    <h3 class="paper-title">${esc(p.title || '(無標題)')}</h3>
+    ${p.authors   ? `<p class="paper-authors">✍️ ${esc(p.authors)}</p>` : ''}
+    ${p.abstract  ? `<p class="paper-abstract">${esc(p.abstract)}</p>` : ''}
+    <div class="paper-foot">
+      <span class="paper-date">${esc(p.published_at||p.journal||'')}</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="score-tag">相關度 ${score}%</span>
+        ${p.url ? `<a class="paper-link" href="${esc(p.url)}" target="_blank" rel="noopener">查看原文 →</a>` : ''}
+      </div>
+    </div>
+  </article>`;
+}
+
+function emptyHTML(icon, h, sub) {
+  return `<div class="empty"><span class="empty-icon">${icon}</span><p class="empty-h">${h}</p><p>${sub}</p></div>`;
+}
+
+function openUrl(url) { if (url) window.open(url,'_blank','noopener'); }
+
+// ── Podcast player ────────────────────────────────────────────────────────────
+function togglePlay() {
+  if (!totalChars) return;
+  playing ? pause() : play();
+}
+
+function play() {
+  if (!synth) { alert('您的瀏覽器不支援語音合成 (Web Speech API)'); return; }
+  if (synth.paused && utterance) {
+    synth.resume();
+    playing = true;
+    updateBtn(true);
+    startTimer();
+    return;
+  }
+  synth.cancel();
+  try {
+    const cached = JSON.parse(localStorage.getItem(LS_DATA));
+    const txt = cached?.script || '';
+    utterance = new SpeechSynthesisUtterance(txt.slice(charIdx));
+    utterance.lang  = 'zh-TW';
+    utterance.rate  = speed;
+    utterance.pitch = 1.0;
+
+    const voices = synth.getVoices();
+    const v = voices.find(v=>v.lang==='zh-TW') || voices.find(v=>v.lang.startsWith('zh'));
+    if (v) utterance.voice = v;
+
+    utterance.onboundary = e => {
+      if (e.name === 'word') charIdx = e.charIndex;
+    };
+    utterance.onend = () => {
+      playing = false; charIdx = 0;
+      updateBtn(false); updateProg(100);
+      clearInterval(progTimer);
+      $('playerTime').textContent = '播放完畢';
+    };
+    utterance.onerror = e => {
+      if (e.error !== 'interrupted') console.warn('TTS:', e.error);
+      playing = false; updateBtn(false);
+    };
+    synth.speak(utterance);
+    playing = true;
+    updateBtn(true);
+    startTimer();
+  } catch(e) { console.error(e); }
+}
+
+function pause() {
+  synth.pause();
+  playing = false;
+  updateBtn(false);
+  clearInterval(progTimer);
+}
+
+function stop() {
+  synth.cancel();
+  playing = false; charIdx = 0;
+  updateBtn(false);
+  updateProg(0);
+  clearInterval(progTimer);
+  $('playerTime').textContent = '—';
+  $$('.script-line.active').forEach(el=>el.classList.remove('active'));
+}
+
+function updateBtn(on) {
+  $('icPlay').style.display  = on ? 'none' : '';
+  $('icPause').style.display = on ? '' : 'none';
+}
+
+function updateProg(pct) {
+  $('progFill').style.width = Math.min(pct,100) + '%';
+}
+
+function startTimer() {
+  clearInterval(progTimer);
+  const cps   = 5 * speed;
+  let elapsed = charIdx / cps;
+  const total = totalChars / cps;
+  let lineIdx = 0;
+
+  progTimer = setInterval(() => {
+    elapsed += 0.5;
+    updateProg(total > 0 ? (elapsed/total)*100 : 0);
+    const m = Math.floor(elapsed/60), s = Math.floor(elapsed%60);
+    const tm = Math.floor(total/60), ts = Math.floor(total%60);
+    $('playerTime').textContent = `${pad(m)}:${pad(s)} / ${pad(tm)}:${pad(ts)}`;
+
+    // Highlight current script line
+    const approxChar = Math.floor(elapsed * cps);
+    let cum = 0;
+    for (let i = 0; i < scriptLines.length; i++) {
+      cum += scriptLines[i].length + 1;
+      if (cum >= approxChar) { lineIdx = i; break; }
+    }
+    $$('.script-line.active').forEach(el=>el.classList.remove('active'));
+    const lineEl = $(`sl-${lineIdx}`);
+    if (lineEl) lineEl.classList.add('active');
+
+    if (elapsed >= total) clearInterval(progTimer);
+  }, 500);
+}
+
+function pad(n) { return String(Math.max(0,n)).padStart(2,'0'); }
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(t) {
+  $$('.tab').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
+  $$('.panel').forEach(p=>p.classList.toggle('active', p.id===`p-${t}`));
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+function openSettings() {
+  $('topicsTA').value = getTopics().join('\n');
+  $('settBackdrop').classList.add('open');
+}
+function closeSettings() { $('settBackdrop').classList.remove('open'); }
+function saveSettings() {
+  const topics = $('topicsTA').value.split('\n').map(t=>t.trim()).filter(Boolean);
+  localStorage.setItem(LS_TOPICS, JSON.stringify(topics));
+  closeSettings();
+  fetchAll(true);
+}
+
+// ── Events ────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  $('dateLbl').textContent = todayStr();
+
+  $$('.tab').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.t)));
+  $('playBtn').addEventListener('click', togglePlay);
+  $('stopBtn').addEventListener('click', stop);
+  $('progTrack').addEventListener('click', e => {
+    const r = $('progTrack').getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - r.left)/r.width));
+    charIdx = Math.floor(pct * totalChars);
+    updateProg(pct*100);
+    if (playing) { stop(); setTimeout(play, 80); }
+  });
+  $$('.spd-btn').forEach(b => b.addEventListener('click', () => {
+    speed = parseFloat(b.dataset.s);
+    $$('.spd-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    if (playing) { stop(); setTimeout(play, 80); }
+  }));
+  $('refreshBtn').addEventListener('click', () => fetchAll(true));
+  $('settingsBtn').addEventListener('click', openSettings);
+  $('closeSettings').addEventListener('click', closeSettings);
+  $('cancelSettings').addEventListener('click', closeSettings);
+  $('saveSettings').addEventListener('click', saveSettings);
+  $('settBackdrop').addEventListener('click', e => { if (e.target===$('settBackdrop')) closeSettings(); });
+
+  // Load voices
+  if (synth) {
+    synth.getVoices();
+    synth.onvoiceschanged = () => synth.getVoices();
+  }
+
+  fetchAll();
+});
+</script>
+</body>
+</html>
