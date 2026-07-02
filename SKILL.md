@@ -1,6 +1,6 @@
 ---
 name: reference-resolver-agent
-description: resolve plain-text, apa, mla, or incomplete reference lists into endnote-ready import files. use when the user asks to convert citations or references into .ris, .enw, or .bib; recover missing doi, pmid, journal, volume, issue, pages, or authors; search by title using crossref, pubmed, semantic scholar, openalex, or google scholar fallback; deduplicate references; or build a citation-to-endnote workflow or agent.
+description: resolve plain-text, apa, mla, or incomplete reference lists into endnote-ready import files. use when the user asks to convert citations or references into .ris, .enw, or .bib; recover missing doi, pmid, journal, volume, issue, pages, or authors; search by title using crossref, pubmed, semantic scholar, openalex, zotero, or google scholar fallback; deduplicate references; or build a citation-to-endnote workflow or agent.
 ---
 
 # Reference Resolver Agent
@@ -12,6 +12,7 @@ Use this skill to turn messy citation text into a validated EndNote import file.
 1. Parse each raw reference into probable fields: title, first author, year, doi, journal/book, volume, issue, pages, url, and publication type.
 2. Search in this order unless the user specifies otherwise:
    - exact DOI if present
+   - Zotero MCP (if connected) when the user references their own library, a collection, or a tag
    - Crossref for journal articles, books, preprints, and conference papers
    - PubMed for biomedical literature
    - Semantic Scholar or OpenAlex for broad scholarly matching and citation metadata
@@ -43,6 +44,14 @@ When producing import text directly in chat:
 - Include `DO  -` for DOI without `https://doi.org/`.
 - Include `UR  -` for URL.
 - Use suitable RIS types: `JOUR`, `BOOK`, `CHAP`, `CONF`, `THES`, `RPRT`, `ELEC`, `GEN`, or `PREPRINT` only if the target importer supports it; otherwise use `GEN` with `T2  - arXiv` for preprints.
+
+## Zotero MCP source
+
+If the `zotero` MCP server (from `.mcp.json`, backed by [zotero-mcp](https://github.com/54yyyu/zotero-mcp)) is connected, treat it as an additional, higher-confidence source alongside Crossref/PubMed/Semantic Scholar/OpenAlex:
+
+- When the user asks to resolve or export items already in their Zotero library, or references a collection/tag, pull metadata via the Zotero MCP tools first rather than re-deriving it from plain text.
+- Zotero-sourced records (including attached PDF metadata) are considered trusted like an exact DOI match — accept them without the 0.90 title-similarity threshold, but still flag obviously incomplete records as `needs_review`.
+- Fall back to the normal Crossref → PubMed → Semantic Scholar/OpenAlex → Google Scholar chain when the Zotero server is unavailable or the item isn't found in the library.
 
 ## Scripted batch conversion
 

@@ -16,6 +16,7 @@ A Claude Code skill that converts messy plain-text citations (APA, MLA, or incom
 ```
 reference-resolver-agent/
 ├── SKILL.md                  # Claude Code skill definition
+├── .mcp.json                 # Project MCP server config (Zotero)
 ├── agents/
 │   └── openai.yaml           # Agent interface configuration
 ├── assets/
@@ -83,6 +84,36 @@ LeCun, Y., Bengio, Y., & Hinton, G. (2015). Deep learning. Nature, 521(7553),
 | `THES` | Thesis | Dissertations |
 | `RPRT` | Report | Technical reports |
 | `GEN` | Generic | arXiv preprints and fallback |
+
+## Zotero MCP Integration
+
+This repo includes a project-scoped `.mcp.json` that registers [zotero-mcp](https://github.com/54yyyu/zotero-mcp) as an MCP server. When installed, it lets Claude pull references directly from a running Zotero library instead of (or in addition to) parsing plain text — useful for resolving items already saved in a collection, extracting PDF annotations, or exporting a Zotero collection straight to `.ris`/`.enw`/`.bib` via this skill's matching and export rules.
+
+**Install:**
+
+```bash
+uv tool install zotero-mcp-server   # or: pip install zotero-mcp-server / pipx install zotero-mcp-server
+zotero-mcp setup                    # auto-configures Claude Desktop, or edit manually (see below)
+```
+
+**Requirements:** Python 3.10+, Zotero 7+ running locally (for local mode).
+
+By default `.mcp.json` uses local mode (`ZOTERO_LOCAL: "true"`), which needs no API credentials and reads directly from the local Zotero client. For web API access instead, add `ZOTERO_API_KEY` and `ZOTERO_LIBRARY_ID` (from https://www.zotero.org/settings/security#applications) to the `env` block in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "zotero": {
+      "command": "zotero-mcp",
+      "args": [],
+      "env": {
+        "ZOTERO_API_KEY": "YOUR_API_KEY",
+        "ZOTERO_LIBRARY_ID": "YOUR_LIBRARY_ID"
+      }
+    }
+  }
+}
+```
 
 ## Notes on Google Scholar
 
